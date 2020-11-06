@@ -1,0 +1,16 @@
+{
+  "name": "com.canstudio.dinner-coroutine",
+  "author": {
+    "name": "ifact",
+    "email": "xyyjxl@outlook.com",
+    "url": "https://sustech-canstudio.github.io/"
+  },
+  "version": "0.0.1",
+  "displayName": "DinnerCoroutine",
+  "description": "Enhanced Unity coroutine",
+  "unity": "2018.4",
+  "keywords": [
+    "coroutine"
+  ],
+  "type": "library"
+}
