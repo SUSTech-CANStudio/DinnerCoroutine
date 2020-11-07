@@ -1,5 +1,7 @@
 # DinnerCoroutine
 
+[![openupm](https://img.shields.io/npm/v/com.canstudio.dinner-coroutine?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.canstudio.dinner-coroutine/)
+
 DinnerCoroutine is a simple enhancement of Unity's coroutine. The usage of DinnerCoroutine is similar with original Unity coroutine, you can change the original coroutine into DinnerCoroutine without modifying your coroutine code.
 
 ## Features
@@ -12,6 +14,34 @@ DinnerCoroutine is a simple enhancement of Unity's coroutine. The usage of Dinne
 - [x] Allow global coroutine (won't destroy when MonoBehaviour destroyed).
 - [x] No dependency.
 - [ ] More features...
+
+## Installation
+
+DinnerCoroutine is easy to install, you can use any of following methods to install it.
+
+### OpenUPM (Recommended)
+
+1. If you are new to OpenUPM, install [openupm-cli](https://github.com/openupm/openupm-cli#installation) first.
+
+2. Go to your Unity project root folder (you can find an `Assets` folder under it), run this command:
+
+   ```shell
+   openupm add com.canstudio.dinner-coroutine
+   ```
+
+3. Open your Unity editor, DinnerCoroutine should be installed successfully.
+
+### UPM
+
+1. If you haven't installed Git, download and install it here: [download Git](https://git-scm.com/downloads)
+
+2. Open your Unity editor, open `Window -> Package Manager` in the toolbar.
+
+3. In Package Manager, click `+ -> add package from git URL` in the top left corner.
+
+4. Add following package:
+
+   `https://github.com/SUSTech-CANStudio/DinnerCoroutine.git#upm`
 
 ## Quick Start
 
@@ -78,3 +108,8 @@ coroutine.Stop();
 coroutine.Interrupt();
 ```
 
+### Samples
+
+You can view [samples](Packages/DinnerCoroutine/Samples) here:
+
+- [control coroutine](Packages/DinnerCoroutine/Samples/ControlSample/ControlCoroutine.cs)
