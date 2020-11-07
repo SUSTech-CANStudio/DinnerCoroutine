@@ -70,7 +70,10 @@ namespace CANStudio.DinnerCoroutine
                 }
 
             if (abbreviation.Count > 0) sb.Append(' ');
-            sb.Append(abbreviation);
+            while (abbreviation.Count > 0)
+            {
+                sb.Append(abbreviation.Dequeue());
+            }
 
             if (upperInitials) sb[0] = char.ToUpper(sb[0]);
 
