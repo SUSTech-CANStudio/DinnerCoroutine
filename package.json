@@ -5,7 +5,7 @@
     "email": "xyyjxl@outlook.com",
     "url": "https://sustech-canstudio.github.io/"
   },
-  "version": "0.0.1",
+  "version": "1.0.0",
   "displayName": "DinnerCoroutine",
   "description": "Enhanced Unity coroutine",
   "unity": "2018.4",
