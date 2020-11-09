@@ -2,6 +2,8 @@
 
 [![openupm](https://img.shields.io/npm/v/com.canstudio.dinner-coroutine?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.canstudio.dinner-coroutine/)
 
+点击这里查看[中文介绍](README-zh-CN.md)
+
 DinnerCoroutine is a simple enhancement of Unity's coroutine. The usage of DinnerCoroutine is similar with original Unity coroutine, you can change the original coroutine into DinnerCoroutine without modifying your coroutine code.
 
 ## Features
@@ -113,3 +115,12 @@ coroutine.Interrupt();
 You can view [samples](Packages/DinnerCoroutine/Samples) here:
 
 - [control coroutine](Packages/DinnerCoroutine/Samples/ControlSample/ControlCoroutine.cs)
+
+## Limitations
+
+As Unity doesn't have full event loop in editor made, some command works differently when coroutine runs in editor:
+
+- `WaitForFixedUpdate`, `WaitForEndOfFrame`: performs as `yield return null` in editor.
+- `WaitForSecondsRealtime`: won't work properly, will wait for a random time depends on the frame rate.
+
+And please pay attention when using the `Time` class, it doesn't work and always return a constant value in editor mode.
