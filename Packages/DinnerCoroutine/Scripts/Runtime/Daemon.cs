@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,9 +31,9 @@ namespace CANStudio.DinnerCoroutine
 
         // fixed update & post render cached coroutines
         private Queue<ICoroutine> _fixedUpdateSpoon;
-        private Queue<ICoroutine> _fixedUpdateFork;
+        private ConcurrentQueue<ICoroutine> _fixedUpdateFork;
         private Queue<ICoroutine> _onPostRenderSpoon;
-        private Queue<ICoroutine> _onPostRenderFork;
+        private ConcurrentQueue<ICoroutine> _onPostRenderFork;
         
 #if UNITY_EDITOR
         private double _lastEditorUpdateTime;
@@ -132,9 +133,9 @@ namespace CANStudio.DinnerCoroutine
             if (_objectForkCoroutines is null) _objectForkCoroutines = new Dictionary<Object, CoroutinePool>();
             if (_protectedForkCoroutines is null) _protectedForkCoroutines = new CoroutinePool();
             if (_fixedUpdateSpoon is null) _fixedUpdateSpoon = new Queue<ICoroutine>();
-            if (_fixedUpdateFork is null) _fixedUpdateFork = new Queue<ICoroutine>();
+            if (_fixedUpdateFork is null) _fixedUpdateFork = new ConcurrentQueue<ICoroutine>();
             if (_onPostRenderSpoon is null) _onPostRenderSpoon = new Queue<ICoroutine>();
-            if (_onPostRenderFork is null) _onPostRenderFork = new Queue<ICoroutine>();
+            if (_onPostRenderFork is null) _onPostRenderFork = new ConcurrentQueue<ICoroutine>();
             
 #if UNITY_EDITOR
             if (!Application.isEditor) return;
@@ -216,7 +217,7 @@ namespace CANStudio.DinnerCoroutine
 
         private void QueueUpdate(UpdateCase @case)
         {
-            Queue<ICoroutine> fork;
+            ConcurrentQueue<ICoroutine> fork;
             Queue<ICoroutine> spoon;
             switch (@case)
             {
@@ -226,7 +227,7 @@ namespace CANStudio.DinnerCoroutine
                     break;
                 case UpdateCase.OnPostRender:
                     fork = _onPostRenderFork;
-                    spoon = _onPostRenderFork;
+                    spoon = _onPostRenderSpoon;
                     break;
                 case UpdateCase.Update:
                 case UpdateCase.None:
@@ -240,7 +241,7 @@ namespace CANStudio.DinnerCoroutine
             {
                 Parallel.For(0, fork.Count, i =>
                 {
-                    var coroutine = fork.Dequeue();
+                    if (!fork.TryDequeue(out var coroutine)) return;
                     if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate(Time.deltaTime);
                     Enqueue(coroutine, true);
                 });
@@ -264,10 +265,12 @@ namespace CANStudio.DinnerCoroutine
             switch (coroutine.NextUpdate)
             {
                 case UpdateCase.FixedUpdate:
-                    (isFork ? _fixedUpdateFork : _fixedUpdateSpoon).Enqueue(coroutine);
+                    if (isFork) _fixedUpdateFork.Enqueue(coroutine);
+                    else _fixedUpdateSpoon.Enqueue(coroutine);
                     break;
                 case UpdateCase.OnPostRender:
-                    (isFork ? _onPostRenderFork : _onPostRenderSpoon).Enqueue(coroutine);
+                    if (isFork) _onPostRenderFork.Enqueue(coroutine);
+                    else _onPostRenderSpoon.Enqueue(coroutine);
                     break;
                 case UpdateCase.None:
                 case UpdateCase.Update:
