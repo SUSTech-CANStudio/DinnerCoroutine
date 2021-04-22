@@ -34,11 +34,7 @@ namespace CANStudio.DinnerCoroutine
         private ConcurrentQueue<ICoroutine> _fixedUpdateFork;
         private Queue<ICoroutine> _onPostRenderSpoon;
         private ConcurrentQueue<ICoroutine> _onPostRenderFork;
-        
-#if UNITY_EDITOR
-        private double _lastEditorUpdateTime;
-#endif
-        
+
         /// <summary>
         ///     Get the daemon singleton instance.
         /// </summary>
@@ -138,10 +134,8 @@ namespace CANStudio.DinnerCoroutine
             if (_onPostRenderFork is null) _onPostRenderFork = new ConcurrentQueue<ICoroutine>();
             
 #if UNITY_EDITOR
-            if (!Application.isEditor) return;
-            // ReSharper disable once DelegateSubtraction
-            if (!(EditorApplication.update is null)) EditorApplication.update -= Update;
-            EditorApplication.update += Update;
+            if (!(EditorApplication.update is null)) EditorApplication.update -= EditorUpdate;
+            EditorApplication.update += EditorUpdate;
 #endif
         }
 
@@ -149,23 +143,20 @@ namespace CANStudio.DinnerCoroutine
         {
             Init();
         }
-        
+
+#if UNITY_EDITOR
+        private void EditorUpdate()
+        {
+            if (Application.isPlaying) return;
+            Update();
+            FixedUpdate();
+            OnPostRender();
+        }
+#endif
+
         private void Update()
         {
-            float deltaTime;
-#if UNITY_EDITOR
-            if (Application.isEditor)
-            {
-                deltaTime = (float) (EditorApplication.timeSinceStartup - _lastEditorUpdateTime);
-                _lastEditorUpdateTime = EditorApplication.timeSinceStartup;
-            }
-            else
-            {
-                deltaTime = Time.deltaTime;
-            }
-#else
-            deltaTime = Time.deltaTime;
-#endif
+            var deltaTime = DinnerTime.deltaTime;
             
             var garbageCount = 0;
             
@@ -219,6 +210,7 @@ namespace CANStudio.DinnerCoroutine
         {
             ConcurrentQueue<ICoroutine> fork;
             Queue<ICoroutine> spoon;
+
             switch (@case)
             {
                 case UpdateCase.FixedUpdate:
@@ -235,14 +227,14 @@ namespace CANStudio.DinnerCoroutine
                 default:
                     throw new ArgumentOutOfRangeException(nameof(@case), @case, null);
             }
-            
+
             // update fork coroutines
             var task = Task.Run(() =>
             {
                 Parallel.For(0, fork.Count, i =>
                 {
                     if (!fork.TryDequeue(out var coroutine)) return;
-                    if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate(Time.deltaTime);
+                    if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate();
                     Enqueue(coroutine, true);
                 });
             });
@@ -252,7 +244,7 @@ namespace CANStudio.DinnerCoroutine
             for (var i = 0; i < count; i++)
             {
                 var coroutine = spoon.Dequeue();
-                if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate(Time.deltaTime);
+                if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate();
                 Enqueue(coroutine, false);
             }
             

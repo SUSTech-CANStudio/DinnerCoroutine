@@ -32,6 +32,7 @@
         /// <summary>
         ///     This can be called in update, fixed update or late update, depending on <see cref="NextUpdate"/>.
         /// </summary>
-        void GeneralUpdate(float deltaTime);
+        /// <param name="deltaTime">This parameter is only required in update.</param>
+        void GeneralUpdate(float deltaTime = 0);
     }
 }
