@@ -17,7 +17,6 @@ namespace CANStudio.DinnerCoroutine
         private readonly string _functionName;
         private readonly bool _hasKeeper;
         private readonly Object _keeper;
-        private IEnumerator _wrapper;
 
         private UpdateCase _nextUpdate = UpdateCase.Update;
 
@@ -32,7 +31,7 @@ namespace CANStudio.DinnerCoroutine
         ///     Callback when the coroutine finished or stopped.
         /// </summary>
         public event Action callback;
-        
+
         UpdateCase ICoroutine.NextUpdate => _hasKeeper && !_keeper ? UpdateCase.None : _nextUpdate;
 
         protected CoroutineBase(IEnumerator coroutine)
@@ -47,7 +46,7 @@ namespace CANStudio.DinnerCoroutine
             _coroutine = coroutine;
             Status = CoroutineStatus.NotStarted;
         }
-        
+
         protected CoroutineBase(Object keeper, IEnumerator coroutine)
         {
             _hasKeeper = true;
@@ -64,13 +63,12 @@ namespace CANStudio.DinnerCoroutine
             _coroutine = coroutine;
             Status = CoroutineStatus.NotStarted;
         }
-        
+
         public void Start()
         {
             switch (Status)
             {
                 case CoroutineStatus.NotStarted:
-                    _wrapper = Wrapper();
                     Status = CoroutineStatus.Running;
                     _nextUpdate = UpdateCase.Update;
                     if (_hasKeeper) Daemon.Instance.Register(_keeper, this, _functionName);
@@ -135,27 +133,64 @@ namespace CANStudio.DinnerCoroutine
                 case CoroutineStatus.Paused:
                     Status = CoroutineStatus.Finished;
                     break;
-                
+
                 case CoroutineStatus.NotStarted:
                 case CoroutineStatus.Finished:
-                    throw new InvalidOperationException(string.Format(ErrorInfo, DinnerUtilities.ToPlainText(nameof(Interrupt)), DinnerUtilities.ToPlainText(Status.ToString())));
-                
+                    throw new InvalidOperationException(string.Format(ErrorInfo,
+                        DinnerUtilities.ToPlainText(nameof(Interrupt)),
+                        DinnerUtilities.ToPlainText(Status.ToString())));
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }
         }
-        
+
         void ICoroutine.GeneralUpdate(float deltaTime)
         {
-            if (_wrapper is null) return;
+            if (_coroutine is null)
+            {
+                Exit(false);
+                return;
+            }
+
             if (_waitSeconds > 0)
             {
                 _waitSeconds -= deltaTime;
                 return;
             }
-            if (!_wrapper.MoveNext()) return;
-            
-            var value = _wrapper.Current;
+
+            switch (Status)
+            {
+                case CoroutineStatus.Running:
+                    break;
+                case CoroutineStatus.Paused:
+                    return;
+                case CoroutineStatus.Finished:
+                    _nextUpdate = UpdateCase.None;
+                    return;
+                case CoroutineStatus.NotStarted:
+                    throw new InvalidOperationException("Not started coroutine shouldn't be updated");
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            try
+            {
+                if (!_coroutine.MoveNext())
+                {
+                    Exit(true);
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                if (_hasKeeper) Debug.LogException(e, _keeper);
+                else Debug.LogException(e);
+                Exit(false);
+                return;
+            }
+
+            var value = _coroutine.Current;
             switch (value)
             {
                 case YieldInstruction instruction:
@@ -179,43 +214,10 @@ namespace CANStudio.DinnerCoroutine
             }
         }
 
-        /// <summary>
-        /// A wrapper on coroutine to implement control methods.
-        /// </summary>
-        /// <returns></returns>
-        private IEnumerator Wrapper()
+        private void Exit(bool invokeCallBack)
         {
-            _waitSeconds = 0;
-            while (true)
-            {
-                if (Status == CoroutineStatus.Running)
-                {
-                    bool hasNext;
-                    try
-                    {
-                        hasNext = !(_coroutine is null) && _coroutine.MoveNext();
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
-                        Status = CoroutineStatus.Finished;
-                        _nextUpdate = UpdateCase.None;
-                        yield break;
-                    }
-                    if (hasNext) yield return _coroutine.Current;
-                    else break;
-                }
-                else if (Status == CoroutineStatus.Paused)
-                    yield return null;
-                else
-                {
-                    _nextUpdate = UpdateCase.None;
-                    yield break;
-                }
-            }
-
             Status = CoroutineStatus.Finished;
-            OnCallback();
+            if (invokeCallBack) OnCallback();
             _nextUpdate = UpdateCase.None;
         }
 
