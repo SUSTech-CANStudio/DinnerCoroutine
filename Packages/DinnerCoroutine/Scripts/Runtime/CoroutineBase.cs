@@ -25,6 +25,8 @@ namespace CANStudio.DinnerCoroutine
                 BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic);
         private float _waitSeconds;
 
+        bool ICoroutine.IsParallel => IsParallel();
+
         public CoroutineStatus Status { get; private set; }
 
         /// <summary>
@@ -64,6 +66,8 @@ namespace CANStudio.DinnerCoroutine
             Status = CoroutineStatus.NotStarted;
         }
 
+        protected abstract bool IsParallel();
+
         public void Start()
         {
             switch (Status)
@@ -74,15 +78,15 @@ namespace CANStudio.DinnerCoroutine
                     if (_hasKeeper) Daemon.Instance.Register(_keeper, this, _functionName);
                     else Daemon.Instance.Register(this, _functionName);
                     break;
-                
+
                 case CoroutineStatus.Paused:
                     Status = CoroutineStatus.Running;
                     break;
-                
+
                 case CoroutineStatus.Running:
                 case CoroutineStatus.Finished:
                     throw new InvalidOperationException(string.Format(ErrorInfo, DinnerUtilities.ToPlainText(nameof(Start)), DinnerUtilities.ToPlainText(Status.ToString())));
-                
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -97,11 +101,11 @@ namespace CANStudio.DinnerCoroutine
                     Status = CoroutineStatus.Finished;
                     OnCallback();
                     break;
-                
+
                 case CoroutineStatus.NotStarted:
                 case CoroutineStatus.Finished:
                     throw new InvalidOperationException(string.Format(ErrorInfo, DinnerUtilities.ToPlainText(nameof(Stop)), DinnerUtilities.ToPlainText(Status.ToString())));
-                
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -114,12 +118,12 @@ namespace CANStudio.DinnerCoroutine
                 case CoroutineStatus.Running:
                     Status = CoroutineStatus.Paused;
                     break;
-                
+
                 case CoroutineStatus.NotStarted:
                 case CoroutineStatus.Paused:
                 case CoroutineStatus.Finished:
                     throw new InvalidOperationException(string.Format(ErrorInfo, DinnerUtilities.ToPlainText(nameof(Pause)), DinnerUtilities.ToPlainText(Status.ToString())));
-                
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }

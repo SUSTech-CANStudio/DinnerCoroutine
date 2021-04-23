@@ -2,6 +2,8 @@
 {
     internal interface ICoroutine
     {
+        bool IsParallel { get; }
+
         /// <summary>
         ///     Get current status of this coroutine.
         /// </summary>
