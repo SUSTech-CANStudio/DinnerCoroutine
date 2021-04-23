@@ -63,19 +63,8 @@ namespace CANStudio.DinnerCoroutine
         {
             if (Application.isEditor) Init();
             if (!keeper || coroutine is null) return;
-            
-            Dictionary<Object, CoroutinePool> objectCoroutines;
-            switch (coroutine)
-            {
-                case SpoonCoroutine _:
-                    objectCoroutines = _objectSpoonCoroutines;
-                    break;
-                case ForkCoroutine _:
-                    objectCoroutines = _objectForkCoroutines;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+
+            var objectCoroutines = coroutine.IsParallel ? _objectForkCoroutines : _objectSpoonCoroutines;
 
             if (objectCoroutines.TryGetValue(keeper, out var pool))
             {
@@ -90,7 +79,7 @@ namespace CANStudio.DinnerCoroutine
                         : new CoroutinePool {{functionName, coroutine}});
             }
         }
-        
+
         /// <summary>
         ///     Register a coroutine
         /// </summary>
@@ -102,18 +91,8 @@ namespace CANStudio.DinnerCoroutine
             if (Application.isEditor) Init();
             if (coroutine is null) return;
 
-            CoroutinePool protectedCoroutines;
-            switch (coroutine)
-            {
-                case SpoonCoroutine _:
-                    protectedCoroutines = _protectedSpoonCoroutines;
-                    break;
-                case ForkCoroutine _:
-                    protectedCoroutines = _protectedForkCoroutines;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            var protectedCoroutines = coroutine.IsParallel ? _protectedForkCoroutines : _protectedSpoonCoroutines;
+
             if (string.IsNullOrEmpty(functionName))
                 protectedCoroutines.Add(coroutine);
             else
@@ -123,7 +102,7 @@ namespace CANStudio.DinnerCoroutine
         private void Init()
         {
             if (Application.isPlaying) DontDestroyOnLoad(this);
-            
+
             if (_objectSpoonCoroutines is null) _objectSpoonCoroutines = new Dictionary<Object, CoroutinePool>();
             if (_protectedSpoonCoroutines is null) _protectedSpoonCoroutines = new CoroutinePool();
             if (_objectForkCoroutines is null) _objectForkCoroutines = new Dictionary<Object, CoroutinePool>();
@@ -132,7 +111,7 @@ namespace CANStudio.DinnerCoroutine
             if (_fixedUpdateFork is null) _fixedUpdateFork = new ConcurrentQueue<ICoroutine>();
             if (_onPostRenderSpoon is null) _onPostRenderSpoon = new Queue<ICoroutine>();
             if (_onPostRenderFork is null) _onPostRenderFork = new ConcurrentQueue<ICoroutine>();
-            
+
 #if UNITY_EDITOR
             if (!(EditorApplication.update is null)) EditorApplication.update -= EditorUpdate;
             EditorApplication.update += EditorUpdate;
@@ -157,25 +136,25 @@ namespace CANStudio.DinnerCoroutine
         private void Update()
         {
             var deltaTime = DinnerTime.deltaTime;
-            
+
             var garbageCount = 0;
-            
+
             // update fork coroutines
             var task = Task.Run(() =>
             {
                 var roughGarbageCount = 0;
                 DeleteKeys(_objectForkCoroutines);
-                
+
                 var coroutines = _objectForkCoroutines.SelectMany(pair => pair.Value).ToList();
                 coroutines.AddRange(_protectedForkCoroutines);
-                
+
                 Parallel.ForEach(coroutines, coroutine =>
                 {
                     if (coroutine.NextUpdate == UpdateCase.Update) coroutine.GeneralUpdate(deltaTime);
                     if (coroutine.NextUpdate == UpdateCase.None) roughGarbageCount++;
                     Enqueue(coroutine, true);
                 });
-                
+
                 return roughGarbageCount;
             });
 
@@ -194,11 +173,11 @@ namespace CANStudio.DinnerCoroutine
                 if (coroutine.NextUpdate == UpdateCase.None) garbageCount++;
                 Enqueue(coroutine, false);
             }
-            
+
             // wait fork coroutine update finish
             task.Wait();
             garbageCount += task.Result;
-            
+
             if (garbageCount > MaxGarbageCount) Clean();
         }
 
@@ -247,7 +226,7 @@ namespace CANStudio.DinnerCoroutine
                 if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate();
                 Enqueue(coroutine, false);
             }
-            
+
             // wait fork coroutine update finish
             task.Wait();
         }

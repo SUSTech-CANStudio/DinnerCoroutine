@@ -26,9 +26,11 @@ namespace CANStudio.DinnerCoroutine
         }
 
         internal SpoonCoroutine(string functionName, IEnumerator coroutine) : base(functionName, coroutine){}
-        
+
         internal SpoonCoroutine(Object keeper, IEnumerator coroutine) : base(keeper, coroutine){}
 
         internal SpoonCoroutine(Object keeper, string functionName, IEnumerator coroutine) : base(keeper, functionName, coroutine){}
+
+        protected override bool IsParallel() => false;
     }
 }

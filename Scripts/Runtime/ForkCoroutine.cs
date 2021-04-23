@@ -27,5 +27,7 @@ namespace CANStudio.DinnerCoroutine
         internal ForkCoroutine(Object keeper, IEnumerator coroutine) : base(keeper, coroutine){}
 
         internal ForkCoroutine(Object keeper, string functionName, IEnumerator coroutine) : base(keeper, functionName, coroutine){}
+
+        protected override bool IsParallel() => true;
     }
 }
