@@ -23,7 +23,9 @@ namespace CANStudio.DinnerCoroutine
         private static readonly FieldInfo WaitForSecondsInfo =
             typeof(WaitForSeconds).GetField("m_Seconds",
                 BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic);
+
         private float _waitSeconds;
+        private AsyncOperation _waitingForAsync;
 
         bool ICoroutine.IsParallel => IsParallel();
 
@@ -157,10 +159,18 @@ namespace CANStudio.DinnerCoroutine
                 return;
             }
 
+            // wait if received yield instruction `WaitForSeconds`
             if (_waitSeconds > 0)
             {
                 _waitSeconds -= deltaTime;
                 return;
+            }
+
+            // wait if received yield instruction `AsyncOperation`
+            if (_waitingForAsync != null)
+            {
+                if (!_waitingForAsync.isDone) return;
+                _waitingForAsync = null;
             }
 
             switch (Status)
@@ -188,8 +198,7 @@ namespace CANStudio.DinnerCoroutine
             }
             catch (Exception e)
             {
-                if (_hasKeeper) Debug.LogException(e, _keeper);
-                else Debug.LogException(e);
+                Debug.LogException(e, _keeper);
                 Exit(false);
                 return;
             }
@@ -204,14 +213,31 @@ namespace CANStudio.DinnerCoroutine
                             _waitSeconds += (float)WaitForSecondsInfo.GetValue(waitForSeconds);
                             _nextUpdate = UpdateCase.Update;
                             break;
+
                         case WaitForFixedUpdate _:
-                            if (Application.isPlaying) _nextUpdate = UpdateCase.FixedUpdate;
+#if UNITY_EDITOR
+                            if (Application.isPlaying)
+#endif
+                                _nextUpdate = UpdateCase.FixedUpdate;
                             break;
+
                         case WaitForEndOfFrame _:
-                            if (Application.isPlaying) _nextUpdate = UpdateCase.OnPostRender;
+#if UNITY_EDITOR
+                            if (Application.isPlaying)
+#endif
+                                _nextUpdate = UpdateCase.OnPostRender;
+                            break;
+
+                        case AsyncOperation asyncOperation:
+                            _waitingForAsync = asyncOperation;
+                            break;
+
+                        default:
+                            Debug.LogWarning($"Unknown yield instruction '{instruction.GetType()}'", _keeper);
                             break;
                     }
                     break;
+
                 default:
                     _nextUpdate = UpdateCase.Update;
                     break;
