@@ -53,7 +53,7 @@ namespace CANStudio.DinnerCoroutine
             spoon.Start();
             return spoon;
         }
-        
+
         /// <summary>
         ///     Start a <see cref="ForkCoroutine"/>.
         /// </summary>
@@ -85,7 +85,7 @@ namespace CANStudio.DinnerCoroutine
             fork.Start();
             return fork;
         }
-        
+
         /// <summary>
         ///     Start a <see cref="ForkCoroutine"/>.
         /// </summary>
@@ -101,7 +101,7 @@ namespace CANStudio.DinnerCoroutine
             fork.Start();
             return fork;
         }
-        
+
         /// <summary>
         ///     Create a <see cref="SpoonCoroutine"/>.
         /// </summary>
@@ -146,7 +146,7 @@ namespace CANStudio.DinnerCoroutine
             if (!(callback is null)) spoon.callback += callback;
             return spoon;
         }
-        
+
         /// <summary>
         ///     Create a <see cref="ForkCoroutine"/>.
         /// </summary>
@@ -176,7 +176,7 @@ namespace CANStudio.DinnerCoroutine
             if (!(callback is null)) fork.callback += callback;
             return fork;
         }
-        
+
         /// <summary>
         ///     Create a <see cref="ForkCoroutine"/>.
         /// </summary>
@@ -190,6 +190,27 @@ namespace CANStudio.DinnerCoroutine
             var fork = new ForkCoroutine(monoBehaviour, coroutine);
             if (!(callback is null)) fork.callback += callback;
             return fork;
+        }
+
+        /// <summary>
+        ///     Stops all coroutines that created in this mono behaviour.
+        ///     This function won't stop unity's original coroutines or not started coroutines.
+        /// </summary>
+        /// <param name="monoBehaviour"></param>
+        public static void StopAllDinnerCoroutines(this MonoBehaviour monoBehaviour)
+        {
+            Daemon.Instance.StopAll(monoBehaviour);
+        }
+
+        /// <summary>
+        ///     Stops all coroutines that created by coroutine name.
+        ///     This function won't stop unity's original coroutines or not started coroutines.
+        /// </summary>
+        /// <param name="monoBehaviour"></param>
+        /// <param name="coroutine">Name of the coroutine function.</param>
+        public static void StopAllDinnerCoroutines(this MonoBehaviour monoBehaviour, string coroutine)
+        {
+            Daemon.Instance.StopAll(monoBehaviour, coroutine);
         }
     }
 }

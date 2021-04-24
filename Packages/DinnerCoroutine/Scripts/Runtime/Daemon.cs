@@ -24,16 +24,16 @@ namespace CANStudio.DinnerCoroutine
         private const float MaxGarbageCount = 30;
 
         // all coroutines
-        private Dictionary<Object, CoroutinePool> _objectSpoonCoroutines;
-        private CoroutinePool _protectedSpoonCoroutines;
-        private Dictionary<Object, CoroutinePool> _objectForkCoroutines;
-        private CoroutinePool _protectedForkCoroutines;
+        private readonly Dictionary<Object, CoroutinePool> _objectSpoonCoroutines = new Dictionary<Object, CoroutinePool>();
+        private readonly CoroutinePool _protectedSpoonCoroutines = new CoroutinePool();
+        private readonly Dictionary<Object, CoroutinePool> _objectForkCoroutines = new Dictionary<Object, CoroutinePool>();
+        private readonly CoroutinePool _protectedForkCoroutines = new CoroutinePool();
 
         // fixed update & post render cached coroutines
-        private Queue<ICoroutine> _fixedUpdateSpoon;
-        private ConcurrentQueue<ICoroutine> _fixedUpdateFork;
-        private Queue<ICoroutine> _onPostRenderSpoon;
-        private ConcurrentQueue<ICoroutine> _onPostRenderFork;
+        private readonly Queue<ICoroutine> _fixedUpdateSpoon = new Queue<ICoroutine>();
+        private readonly ConcurrentQueue<ICoroutine> _fixedUpdateFork = new ConcurrentQueue<ICoroutine>();
+        private readonly Queue<ICoroutine> _onPostRenderSpoon = new Queue<ICoroutine>();
+        private readonly ConcurrentQueue<ICoroutine> _onPostRenderFork = new ConcurrentQueue<ICoroutine>();
 
         /// <summary>
         ///     Get the daemon singleton instance.
@@ -61,7 +61,9 @@ namespace CANStudio.DinnerCoroutine
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Register(Object keeper, ICoroutine coroutine, string functionName = null)
         {
-            if (Application.isEditor) Init();
+#if UNITY_EDITOR
+            Init();
+#endif
             if (!keeper || coroutine is null) return;
 
             var objectCoroutines = coroutine.IsParallel ? _objectForkCoroutines : _objectSpoonCoroutines;
@@ -88,7 +90,9 @@ namespace CANStudio.DinnerCoroutine
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Register(ICoroutine coroutine, string functionName = null)
         {
-            if (Application.isEditor) Init();
+#if UNITY_EDITOR
+            Init();
+#endif
             if (coroutine is null) return;
 
             var protectedCoroutines = coroutine.IsParallel ? _protectedForkCoroutines : _protectedSpoonCoroutines;
@@ -99,18 +103,51 @@ namespace CANStudio.DinnerCoroutine
                 protectedCoroutines.Add(functionName, coroutine);
         }
 
+        /// <summary>
+        ///     Stops all coroutines under keeper.
+        /// </summary>
+        /// <param name="keeper"></param>
+        public void StopAll(Object keeper)
+        {
+            foreach (var c in _objectForkCoroutines[keeper])
+            {
+                if (c.Status == CoroutineStatus.Paused || c.Status == CoroutineStatus.Running)
+                    c.Stop();
+            }
+
+            foreach (var c in _objectSpoonCoroutines[keeper])
+            {
+                if (c.Status == CoroutineStatus.Paused || c.Status == CoroutineStatus.Running)
+                    c.Stop();
+            }
+        }
+
+        /// <summary>
+        ///     Stops all coroutines that registered with function name under keeper.
+        /// </summary>
+        /// <param name="keeper"></param>
+        /// <param name="coroutine">The function name when registering the coroutine.</param>
+        public void StopAll(Object keeper, string coroutine)
+        {
+            foreach (var c in _objectForkCoroutines[keeper][coroutine])
+            {
+                if (c.Status == CoroutineStatus.Paused || c.Status == CoroutineStatus.Running)
+                    c.Stop();
+            }
+
+            foreach (var c in _objectSpoonCoroutines[keeper][coroutine])
+            {
+                if (c.Status == CoroutineStatus.Paused || c.Status == CoroutineStatus.Running)
+                    c.Stop();
+            }
+        }
+
         private void Init()
         {
-            if (Application.isPlaying) DontDestroyOnLoad(this);
-
-            if (_objectSpoonCoroutines is null) _objectSpoonCoroutines = new Dictionary<Object, CoroutinePool>();
-            if (_protectedSpoonCoroutines is null) _protectedSpoonCoroutines = new CoroutinePool();
-            if (_objectForkCoroutines is null) _objectForkCoroutines = new Dictionary<Object, CoroutinePool>();
-            if (_protectedForkCoroutines is null) _protectedForkCoroutines = new CoroutinePool();
-            if (_fixedUpdateSpoon is null) _fixedUpdateSpoon = new Queue<ICoroutine>();
-            if (_fixedUpdateFork is null) _fixedUpdateFork = new ConcurrentQueue<ICoroutine>();
-            if (_onPostRenderSpoon is null) _onPostRenderSpoon = new Queue<ICoroutine>();
-            if (_onPostRenderFork is null) _onPostRenderFork = new ConcurrentQueue<ICoroutine>();
+#if UNITY_EDITOR
+            if (Application.isPlaying)
+#endif
+                DontDestroyOnLoad(this);
 
 #if UNITY_EDITOR
             if (!(EditorApplication.update is null)) EditorApplication.update -= EditorUpdate;
@@ -257,8 +294,12 @@ namespace CANStudio.DinnerCoroutine
         /// <param name="dictionary"></param>
         private static void DeleteKeys(Dictionary<Object, CoroutinePool> dictionary)
         {
-            var list = dictionary.Keys.Where(key => !key);
-            foreach (var key in list) dictionary.Remove(key);
+            var list = dictionary.Keys.Where(key => !key).ToArray();
+            foreach (var key in list)
+            {
+                dictionary[key].Destroy();
+                dictionary.Remove(key);
+            }
         }
 
         private void Clean()
