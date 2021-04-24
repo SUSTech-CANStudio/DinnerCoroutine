@@ -74,10 +74,22 @@ namespace CANStudio.DinnerCoroutine
             }
 
             _list.RemoveAll(coroutine => coroutine.NextUpdate == UpdateCase.None);
-            
+
             var toDelete =
                 _dictionary.Keys.Where(s => _dictionary[s] is null || !_dictionary[s].GetEnumerator().MoveNext());
             foreach (var key in toDelete) _dictionary.Remove(key);
+        }
+
+        /// <summary>
+        ///     Interrupt all coroutines in this pool.
+        /// </summary>
+        public void Destroy()
+        {
+            foreach (var coroutine in this)
+            {
+                if (coroutine.Status == CoroutineStatus.Paused || coroutine.Status == CoroutineStatus.Running)
+                    coroutine.Interrupt();
+            }
         }
 
         private class Enumerator : IEnumerator<ICoroutine>
