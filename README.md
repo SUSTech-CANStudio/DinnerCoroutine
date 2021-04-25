@@ -123,4 +123,10 @@ As Unity doesn't have full event loop in editor made, some command works differe
 - `WaitForFixedUpdate`, `WaitForEndOfFrame`: performs as `yield return null` in editor.
 - `WaitForSecondsRealtime`: won't work properly, will wait for a random time depends on the frame rate.
 
-And please pay attention when using the `Time` class, it doesn't work and always return a constant value in editor mode.
+And please pay attention when using the `Time` class, it doesn't work and always return a constant value in editor mode. Considering use `DinnerTime` instead of `Time` in your coroutines, this class is an alias of `Time` in playing mode, and can also provide partial time access in editor mode.
+
+`DinnerTime` provides following functions in editor mode:
+
+- `time`, `deltaTime`, `unscaledTime`, `unscaledDeltaTime`, `timeScale`: These functions works properly in editor just like what they do in playing.
+- `fixedTime`, `fixedDeltaTime`, `fixedUnscaledTime`, `fixedUnscaledDeltaTime`: As fixed update doesn't exist in editor mode, they just returns not fixed time, and works in most situations.
+- Other functions are currently not accessible in editor mode.

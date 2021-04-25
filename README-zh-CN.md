@@ -121,4 +121,10 @@ Unity引擎在编辑器模式下并没有完整的事件循环, 因此一些指�
 - `WaitForFixedUpdate`, `WaitForEndOfFrame`: 在编辑器下会变为`yield return null`
 - `WaitForSecondsRealtime`: 在编辑器下不会等待正确的时间, 而是等待一个取决于你编辑器帧数的随机时间
 
-在编辑器下使用`Time`类时请注意, 它的所有返回值在编辑器下都是常量, 并不会被正确地更新
+在编辑器下使用`Time`类时请注意, 它的所有返回值在编辑器下都是常量, 并不会被正确地更新。在你的协程中，应该尽量使用`DinnerTime`类代替`Time`类，这个类在游戏运行时与`Time`类完全一致，而在编辑器模式下也可以提供部分时间访问。
+
+`DinnerTime`类在编辑器模式下可以提供的时间访问有：
+
+- `time`, `deltaTime`, `unscaledTime`, `unscaledDeltaTime`, `timeScale`：这些功能与在游戏中完全一致
+- `fixedTime`, `fixedDeltaTime`, `fixedUnscaledTime`, `fixedUnscaledDeltaTime`：由于编辑器模式下没有固定刷新，这些功能会返回非固定的刷新时间，在大多数情况下可以正常工作
+- 其它功能暂不支持在编辑器模式下访问
