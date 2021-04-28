@@ -1,3 +1,20 @@
+# [1.2.0](https://github.com/SUSTech-CANStudio/DinnerCoroutine/compare/v1.1.0...v1.2.0) (2021-04-28)
+
+
+### Bug Fixes
+
+* yield return WaitForFixedUpdate causes repeat updates ([c2f69c1](https://github.com/SUSTech-CANStudio/DinnerCoroutine/commit/c2f69c1fcc1300cd7fc79dc7368a87eacc329188))
+
+
+### Features
+
+* support editor mode fixed update ([d8479e4](https://github.com/SUSTech-CANStudio/DinnerCoroutine/commit/d8479e479e9358c0dc549360c405f70e9546f6fc))
+
+
+### Performance Improvements
+
+* use linked list for better performance when deleting finished coroutines ([3159e41](https://github.com/SUSTech-CANStudio/DinnerCoroutine/commit/3159e41181d8c90daf0f519386d2f1a7ea19d95a))
+
 # [1.1.0](https://github.com/SUSTech-CANStudio/DinnerCoroutine/compare/v1.0.0...v1.1.0) (2021-04-25)
 
 
