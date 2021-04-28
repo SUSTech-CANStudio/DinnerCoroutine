@@ -11,6 +11,7 @@ DinnerCoroutine is a simple enhancement of Unity's coroutine. The usage of Dinne
 - [x] Support original yield instructions.
 - [x] Support original custom yield instructions.
 - [x] Support both editor and in game coroutine.
+- [x] Support yield return fixed update in editor.
 - [x] Provides full control to coroutine (manually start, pause and recover, stop or interrupt).
 - [x] Provides asynchronous coroutine (you cannot access some Unity methods in this kind of coroutine).
 - [x] Allow global coroutine (won't destroy when MonoBehaviour destroyed).
@@ -120,13 +121,16 @@ You can view [samples](Packages/DinnerCoroutine/Samples) here:
 
 As Unity doesn't have full event loop in editor made, some command works differently when coroutine runs in editor:
 
-- `WaitForFixedUpdate`, `WaitForEndOfFrame`: performs as `yield return null` in editor.
+- `WaitForEndOfFrame`: performs as `yield return null` in editor.
+
 - `WaitForSecondsRealtime`: won't work properly, will wait for a random time depends on the frame rate.
 
-And please pay attention when using the `Time` class, it doesn't work and always return a constant value in editor mode. Considering use `DinnerTime` instead of `Time` in your coroutines, this class is an alias of `Time` in playing mode, and can also provide partial time access in editor mode.
+## Time support in editor coroutines
+
+Please pay attention when using the `Time` class, it doesn't work and always return a constant value in editor mode. Considering use `DinnerTime` instead of `Time` in your coroutines, this class is an alias of `Time` in playing mode, and can also provide partial time access in editor mode.
 
 `DinnerTime` provides following functions in editor mode:
 
-- `time`, `deltaTime`, `unscaledTime`, `unscaledDeltaTime`, `timeScale`: These functions works properly in editor just like what they do in playing.
-- `fixedTime`, `fixedDeltaTime`, `fixedUnscaledTime`, `fixedUnscaledDeltaTime`: As fixed update doesn't exist in editor mode, they just returns not fixed time, and works in most situations.
+- `time`, `deltaTime`, `unscaledTime`, `unscaledDeltaTime`, `timeScale`, `fixedTime`, `fixedDeltaTime`, `fixedUnscaledTime`, `fixedUnscaledDeltaTime`, `inFixedTimeStep`: These functions works properly in editor just like what they do in playing.
 - Other functions are currently not accessible in editor mode.
+
