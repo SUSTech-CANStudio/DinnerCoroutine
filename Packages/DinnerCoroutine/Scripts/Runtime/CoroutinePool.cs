@@ -1,24 +1,23 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace CANStudio.DinnerCoroutine
 {
-    internal class CoroutinePool : IEnumerable<ICoroutine>
+    internal class CoroutinePool : IEnumerable<LinkedListNode<ICoroutine>>
     {
-        private readonly IDictionary<string, List<ICoroutine>> _dictionary;
+        private readonly IDictionary<string, LinkedList<ICoroutine>> _dictionary;
 
-        private readonly List<ICoroutine> _list;
+        private readonly LinkedList<ICoroutine> _list;
 
         public CoroutinePool()
         {
-            _dictionary = new Dictionary<string, List<ICoroutine>>();
-            _list = new List<ICoroutine>();
+            _dictionary = new Dictionary<string, LinkedList<ICoroutine>>();
+            _list = new LinkedList<ICoroutine>();
         }
 
         public IEnumerable<ICoroutine> this[string name] => _dictionary[name];
 
-        public IEnumerator<ICoroutine> GetEnumerator()
+        public IEnumerator<LinkedListNode<ICoroutine>> GetEnumerator()
         {
             return new Enumerator(this);
         }
@@ -36,8 +35,8 @@ namespace CANStudio.DinnerCoroutine
         public void Add(string name, ICoroutine coroutine)
         {
             if (coroutine is null) return;
-            if (_dictionary.TryGetValue(name, out var list)) list.Add(coroutine);
-            else _dictionary.Add(name, new List<ICoroutine> {coroutine});
+            if (_dictionary.TryGetValue(name, out var list)) list.AddLast(coroutine);
+            else _dictionary.Add(name, new LinkedList<ICoroutine>(new []{coroutine}));
         }
 
         /// <summary>
@@ -47,7 +46,7 @@ namespace CANStudio.DinnerCoroutine
         public void Add(ICoroutine coroutine)
         {
             if (coroutine is null) return;
-            _list.Add(coroutine);
+            _list.AddLast(coroutine);
         }
 
         /// <summary>
@@ -64,39 +63,22 @@ namespace CANStudio.DinnerCoroutine
         }
 
         /// <summary>
-        ///     Clean coroutines that no longer need update and keys whose value is empty.
-        /// </summary>
-        public void Clean()
-        {
-            foreach (var list in _dictionary.Values)
-            {
-                list.RemoveAll(coroutine => coroutine.NextUpdate == UpdateCase.None);
-            }
-
-            _list.RemoveAll(coroutine => coroutine.NextUpdate == UpdateCase.None);
-
-            var toDelete =
-                _dictionary.Keys.Where(s => _dictionary[s] is null || !_dictionary[s].GetEnumerator().MoveNext());
-            foreach (var key in toDelete) _dictionary.Remove(key);
-        }
-
-        /// <summary>
         ///     Interrupt all coroutines in this pool.
         /// </summary>
         public void Destroy()
         {
-            foreach (var coroutine in this)
+            foreach (var coroutineNode in this)
             {
-                if (coroutine.Status == CoroutineStatus.Paused || coroutine.Status == CoroutineStatus.Running)
-                    coroutine.Interrupt();
+                if (coroutineNode.Value.Status == CoroutineStatus.Paused || coroutineNode.Value.Status == CoroutineStatus.Running)
+                    coroutineNode.Value.Interrupt();
             }
         }
 
-        private class Enumerator : IEnumerator<ICoroutine>
+        private class Enumerator : IEnumerator<LinkedListNode<ICoroutine>>
         {
             private readonly CoroutinePool _pool;
-            private IEnumerator<KeyValuePair<string, List<ICoroutine>>> _dictionaryEnumerator;
-            private IEnumerator<ICoroutine> _listEnumerator;
+            private IEnumerator<KeyValuePair<string, LinkedList<ICoroutine>>> _dictionaryEnumerator;
+            private bool _firstNode;
 
             public Enumerator(CoroutinePool pool)
             {
@@ -108,26 +90,28 @@ namespace CANStudio.DinnerCoroutine
             {
                 while (true)
                 {
-                    if (_listEnumerator.MoveNext()) return true;
+                    if (_firstNode) _firstNode = false;
+                    else Current = Current?.Next;
+                    if (Current != null) return true;
                     if (!_dictionaryEnumerator.MoveNext()) return false;
-                    _listEnumerator.Dispose();
-                    _listEnumerator = _dictionaryEnumerator.Current.Value.GetEnumerator();
+                    Current = _dictionaryEnumerator.Current.Value.First;
+                    _firstNode = true;
                 }
             }
 
             public void Reset()
             {
-                _listEnumerator = _pool._list.GetEnumerator();
+                Current = _pool._list.First;
+                _firstNode = true;
                 _dictionaryEnumerator = _pool._dictionary.GetEnumerator();
             }
 
-            public ICoroutine Current => _listEnumerator.Current;
+            public LinkedListNode<ICoroutine> Current { get; private set; }
 
             object IEnumerator.Current => Current;
 
             public void Dispose()
             {
-                _listEnumerator.Dispose();
                 _dictionaryEnumerator.Dispose();
             }
         }

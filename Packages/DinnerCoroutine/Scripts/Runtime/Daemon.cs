@@ -17,10 +17,8 @@ namespace CANStudio.DinnerCoroutine
         /// </summary>
         private const string DefaultName = "Dinner Coroutine Daemon";
 
-        /// <summary>
-        ///     Clean not needed coroutines when <see cref="MaxGarbageCount"/> reached.
-        /// </summary>
-        private const float MaxGarbageCount = 30;
+        private readonly ConcurrentStack<LinkedListNode<ICoroutine>> _toDestroy =
+            new ConcurrentStack<LinkedListNode<ICoroutine>>();
 
         // all coroutines
         private readonly Dictionary<Object, CoroutinePool> _objectSpoonCoroutines = new Dictionary<Object, CoroutinePool>();
@@ -29,10 +27,10 @@ namespace CANStudio.DinnerCoroutine
         private readonly CoroutinePool _protectedForkCoroutines = new CoroutinePool();
 
         // fixed update & post render cached coroutines
-        private readonly Queue<ICoroutine> _fixedUpdateSpoon = new Queue<ICoroutine>();
-        private readonly ConcurrentQueue<ICoroutine> _fixedUpdateFork = new ConcurrentQueue<ICoroutine>();
-        private readonly Queue<ICoroutine> _onPostRenderSpoon = new Queue<ICoroutine>();
-        private readonly ConcurrentQueue<ICoroutine> _onPostRenderFork = new ConcurrentQueue<ICoroutine>();
+        private readonly Queue<LinkedListNode<ICoroutine>> _fixedUpdateSpoon = new Queue<LinkedListNode<ICoroutine>>();
+        private readonly ConcurrentQueue<LinkedListNode<ICoroutine>> _fixedUpdateFork = new ConcurrentQueue<LinkedListNode<ICoroutine>>();
+        private readonly Queue<LinkedListNode<ICoroutine>> _onPostRenderSpoon = new Queue<LinkedListNode<ICoroutine>>();
+        private readonly ConcurrentQueue<LinkedListNode<ICoroutine>> _onPostRenderFork = new ConcurrentQueue<LinkedListNode<ICoroutine>>();
 
         /// <summary>
         ///     Get the daemon singleton instance.
@@ -126,16 +124,16 @@ namespace CANStudio.DinnerCoroutine
         /// <param name="keeper"></param>
         public void StopAll(Object keeper)
         {
-            foreach (var c in _objectForkCoroutines[keeper])
+            foreach (var coroutineNode in _objectForkCoroutines[keeper])
             {
-                if (c.Status == CoroutineStatus.Paused || c.Status == CoroutineStatus.Running)
-                    c.Stop();
+                if (coroutineNode.Value.Status == CoroutineStatus.Paused || coroutineNode.Value.Status == CoroutineStatus.Running)
+                    coroutineNode.Value.Stop();
             }
 
-            foreach (var c in _objectSpoonCoroutines[keeper])
+            foreach (var coroutineNode in _objectSpoonCoroutines[keeper])
             {
-                if (c.Status == CoroutineStatus.Paused || c.Status == CoroutineStatus.Running)
-                    c.Stop();
+                if (coroutineNode.Value.Status == CoroutineStatus.Paused || coroutineNode.Value.Status == CoroutineStatus.Running)
+                    coroutineNode.Value.Stop();
             }
         }
 
@@ -163,8 +161,6 @@ namespace CANStudio.DinnerCoroutine
         {
             var deltaTime = DinnerTime.deltaTime;
 
-            var garbageCount = 0;
-
             // update fork coroutines
             var task = Task.Run(() =>
             {
@@ -174,10 +170,9 @@ namespace CANStudio.DinnerCoroutine
                 var coroutines = _objectForkCoroutines.SelectMany(pair => pair.Value).ToList();
                 coroutines.AddRange(_protectedForkCoroutines);
 
-                Parallel.ForEach(coroutines, coroutine =>
+                Parallel.ForEach(coroutines, coroutineNode =>
                 {
-                    if (coroutine.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutine, true, deltaTime);
-                    if (coroutine.NextUpdate == UpdateCase.None) roughGarbageCount++;
+                    if (coroutineNode.Value.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutineNode, true, deltaTime);
                 });
 
                 return roughGarbageCount;
@@ -185,23 +180,24 @@ namespace CANStudio.DinnerCoroutine
 
             // update scoop coroutines
             DeleteKeys(_objectSpoonCoroutines);
-            foreach (var coroutine in _objectSpoonCoroutines.SelectMany(pair => pair.Value))
+            foreach (var coroutineNode in _objectSpoonCoroutines.SelectMany(pair => pair.Value))
             {
-                if (coroutine.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutine, false, deltaTime);
-                if (coroutine.NextUpdate == UpdateCase.None) garbageCount++;
+                if (coroutineNode.Value.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutineNode, false, deltaTime);
             }
 
-            foreach (var coroutine in _protectedSpoonCoroutines)
+            foreach (var coroutineNode in _protectedSpoonCoroutines)
             {
-                if (coroutine.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutine, false, deltaTime);
-                if (coroutine.NextUpdate == UpdateCase.None) garbageCount++;
+                if (coroutineNode.Value.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutineNode, false, deltaTime);
             }
 
             // wait fork coroutine update finish
             task.Wait();
-            garbageCount += task.Result;
 
-            if (garbageCount > MaxGarbageCount) Clean();
+            // clean finished coroutines
+            while (_toDestroy.TryPop(out var coroutineNode))
+            {
+                coroutineNode.List.Remove(coroutineNode);
+            }
         }
 
         private void FixedUpdate() => QueueUpdate(UpdateCase.FixedUpdate);
@@ -210,8 +206,8 @@ namespace CANStudio.DinnerCoroutine
 
         private void QueueUpdate(UpdateCase @case)
         {
-            ConcurrentQueue<ICoroutine> fork;
-            Queue<ICoroutine> spoon;
+            ConcurrentQueue<LinkedListNode<ICoroutine>> fork;
+            Queue<LinkedListNode<ICoroutine>> spoon;
 
             switch (@case)
             {
@@ -235,8 +231,8 @@ namespace CANStudio.DinnerCoroutine
             {
                 Parallel.For(0, fork.Count, i =>
                 {
-                    if (!fork.TryDequeue(out var coroutine)) return;
-                    GeneralUpdateAndEnqueue(coroutine, true);
+                    if (!fork.TryDequeue(out var coroutineNode)) return;
+                    GeneralUpdateAndEnqueue(coroutineNode, true);
                 });
             });
 
@@ -244,28 +240,30 @@ namespace CANStudio.DinnerCoroutine
             var count = spoon.Count;
             for (var i = 0; i < count; i++)
             {
-                var coroutine = spoon.Dequeue();
-                GeneralUpdateAndEnqueue(coroutine, false);
+                var coroutineNode = spoon.Dequeue();
+                GeneralUpdateAndEnqueue(coroutineNode, false);
             }
 
             // wait fork coroutine update finish
             task.Wait();
         }
 
-        private void GeneralUpdateAndEnqueue(ICoroutine coroutine, bool isFork, float deltaTime = 0)
+        private void GeneralUpdateAndEnqueue(LinkedListNode<ICoroutine> coroutineNode, bool isFork, float deltaTime = 0)
         {
-            coroutine.GeneralUpdate(deltaTime);
-            switch (coroutine.NextUpdate)
+            coroutineNode.Value.GeneralUpdate(deltaTime);
+            switch (coroutineNode.Value.NextUpdate)
             {
                 case UpdateCase.FixedUpdate:
-                    if (isFork) _fixedUpdateFork.Enqueue(coroutine);
-                    else _fixedUpdateSpoon.Enqueue(coroutine);
+                    if (isFork) _fixedUpdateFork.Enqueue(coroutineNode);
+                    else _fixedUpdateSpoon.Enqueue(coroutineNode);
                     break;
                 case UpdateCase.OnPostRender:
-                    if (isFork) _onPostRenderFork.Enqueue(coroutine);
-                    else _onPostRenderSpoon.Enqueue(coroutine);
+                    if (isFork) _onPostRenderFork.Enqueue(coroutineNode);
+                    else _onPostRenderSpoon.Enqueue(coroutineNode);
                     break;
                 case UpdateCase.None:
+                    _toDestroy.Push(coroutineNode);
+                    break;
                 case UpdateCase.Update:
                     break;
                 default:
@@ -285,20 +283,6 @@ namespace CANStudio.DinnerCoroutine
                 dictionary[key].Destroy();
                 dictionary.Remove(key);
             }
-        }
-
-        private void Clean()
-        {
-            foreach (var pool in _objectSpoonCoroutines.Values)
-            {
-                pool.Clean();
-            }
-            foreach (var pool in _objectForkCoroutines.Values)
-            {
-                pool.Clean();
-            }
-            _protectedSpoonCoroutines.Clean();
-            _protectedSpoonCoroutines.Clean();
         }
     }
 }
