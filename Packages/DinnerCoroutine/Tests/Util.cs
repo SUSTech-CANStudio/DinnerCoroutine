@@ -16,12 +16,12 @@ namespace Tests
             DaemonType.GetMethod("EditorUpdate",
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly);
 
+        private static readonly Lazy<Action> Update = new Lazy<Action>(() =>
+            EditorUpdate.CreateDelegate(typeof(Action), Instance.GetValue(null)) as Action);
+
         /// <summary>
         ///     Invoke update manually for test.
         /// </summary>
-        public static void UpdateDaemon()
-        {
-            EditorUpdate.Invoke(Instance.GetValue(null), null);
-        }
+        public static void UpdateDaemon() => Update.Value();
     }
 }
