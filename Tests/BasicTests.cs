@@ -28,8 +28,8 @@ namespace Tests
             Assert.AreEqual(CoroutineStatus.NotStarted, sc.Status);
             sc.Start();
             Assert.AreEqual(CoroutineStatus.Running, sc.Status);
-            Util.UpdateDaemon();
-            Util.UpdateDaemon();
+            Util.UpdateDinnerTime();
+            Util.UpdateDinnerTime();
             Assert.AreEqual(CoroutineStatus.Finished, sc.Status);
         }
 
@@ -40,8 +40,8 @@ namespace Tests
             Assert.AreEqual(CoroutineStatus.NotStarted, fc.Status);
             fc.Start();
             Assert.AreEqual(CoroutineStatus.Running, fc.Status);
-            Util.UpdateDaemon();
-            Util.UpdateDaemon();
+            Util.UpdateDinnerTime();
+            Util.UpdateDinnerTime();
             Assert.AreEqual(CoroutineStatus.Finished, fc.Status);
         }
 
@@ -52,16 +52,16 @@ namespace Tests
 
             var sc = new SpoonCoroutine(SimpleCoroutine(), () => callback = true);
             sc.Start();
-            Util.UpdateDaemon();
-            Util.UpdateDaemon();
+            Util.UpdateDinnerTime();
+            Util.UpdateDinnerTime();
             Assert.IsTrue(callback);
 
             callback = false;
 
             var fc = new ForkCoroutine(SimpleCoroutine(), () => callback = true);
             fc.Start();
-            Util.UpdateDaemon();
-            Util.UpdateDaemon();
+            Util.UpdateDinnerTime();
+            Util.UpdateDinnerTime();
             Assert.IsTrue(callback);
         }
 
@@ -75,7 +75,7 @@ namespace Tests
             var fc0 = behaviour.StartFork(SimpleCoroutine());
             var fc1 = behaviour.StartFork("InnerSimpleCoroutine");
             Object.DestroyImmediate(keeper);
-            Util.UpdateDaemon();
+            Util.UpdateDinnerTime();
             Assert.AreEqual(CoroutineStatus.Finished, sc0.Status);
             Assert.AreEqual(CoroutineStatus.Finished, sc1.Status);
             Assert.AreEqual(CoroutineStatus.Finished, fc0.Status);
