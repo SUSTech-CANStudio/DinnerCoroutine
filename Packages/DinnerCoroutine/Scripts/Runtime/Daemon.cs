@@ -176,9 +176,8 @@ namespace CANStudio.DinnerCoroutine
 
                 Parallel.ForEach(coroutines, coroutine =>
                 {
-                    if (coroutine.NextUpdate == UpdateCase.Update) coroutine.GeneralUpdate(deltaTime);
+                    if (coroutine.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutine, true, deltaTime);
                     if (coroutine.NextUpdate == UpdateCase.None) roughGarbageCount++;
-                    Enqueue(coroutine, true);
                 });
 
                 return roughGarbageCount;
@@ -188,16 +187,14 @@ namespace CANStudio.DinnerCoroutine
             DeleteKeys(_objectSpoonCoroutines);
             foreach (var coroutine in _objectSpoonCoroutines.SelectMany(pair => pair.Value))
             {
-                if (coroutine.NextUpdate == UpdateCase.Update) coroutine.GeneralUpdate(deltaTime);
+                if (coroutine.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutine, false, deltaTime);
                 if (coroutine.NextUpdate == UpdateCase.None) garbageCount++;
-                Enqueue(coroutine, false);
             }
 
             foreach (var coroutine in _protectedSpoonCoroutines)
             {
-                if (coroutine.NextUpdate == UpdateCase.Update) coroutine.GeneralUpdate(deltaTime);
+                if (coroutine.NextUpdate == UpdateCase.Update) GeneralUpdateAndEnqueue(coroutine, false, deltaTime);
                 if (coroutine.NextUpdate == UpdateCase.None) garbageCount++;
-                Enqueue(coroutine, false);
             }
 
             // wait fork coroutine update finish
@@ -239,8 +236,7 @@ namespace CANStudio.DinnerCoroutine
                 Parallel.For(0, fork.Count, i =>
                 {
                     if (!fork.TryDequeue(out var coroutine)) return;
-                    if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate();
-                    Enqueue(coroutine, true);
+                    GeneralUpdateAndEnqueue(coroutine, true);
                 });
             });
 
@@ -249,16 +245,16 @@ namespace CANStudio.DinnerCoroutine
             for (var i = 0; i < count; i++)
             {
                 var coroutine = spoon.Dequeue();
-                if (coroutine.NextUpdate == @case) coroutine.GeneralUpdate();
-                Enqueue(coroutine, false);
+                GeneralUpdateAndEnqueue(coroutine, false);
             }
 
             // wait fork coroutine update finish
             task.Wait();
         }
 
-        private void Enqueue(ICoroutine coroutine, bool isFork)
+        private void GeneralUpdateAndEnqueue(ICoroutine coroutine, bool isFork, float deltaTime = 0)
         {
+            coroutine.GeneralUpdate(deltaTime);
             switch (coroutine.NextUpdate)
             {
                 case UpdateCase.FixedUpdate:
