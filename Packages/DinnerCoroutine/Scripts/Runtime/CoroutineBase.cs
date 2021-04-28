@@ -215,17 +215,11 @@ namespace CANStudio.DinnerCoroutine
                             break;
 
                         case WaitForFixedUpdate _:
-#if UNITY_EDITOR
-                            if (Application.isPlaying)
-#endif
-                                _nextUpdate = UpdateCase.FixedUpdate;
+                            _nextUpdate = UpdateCase.FixedUpdate;
                             break;
 
                         case WaitForEndOfFrame _:
-#if UNITY_EDITOR
-                            if (Application.isPlaying)
-#endif
-                                _nextUpdate = UpdateCase.OnPostRender;
+                            _nextUpdate = UpdateCase.OnPostRender;
                             break;
 
                         case AsyncOperation asyncOperation:

@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -44,11 +43,35 @@ namespace CANStudio.DinnerCoroutine
             new Lazy<Daemon>(() =>
             {
                 var go = GameObject.Find(DefaultName);
-                if (!go) go = new GameObject(DefaultName);
-                go.hideFlags = HideFlags.HideAndDontSave;
-                var daemon = go.GetComponent<Daemon>();
-                if (!daemon) daemon = go.AddComponent<Daemon>();
-                daemon.Init();
+                Daemon daemon;
+                if (go)
+                {
+                    daemon = go.GetComponent<Daemon>();
+                    if (!daemon) daemon = go.AddComponent<Daemon>();
+                }
+                else
+                {
+                    go = new GameObject(DefaultName) {hideFlags = HideFlags.HideAndDontSave};
+#if UNITY_EDITOR
+                    if (Application.isPlaying)
+#endif
+                    DontDestroyOnLoad(go);
+                    daemon = go.AddComponent<Daemon>();
+                }
+
+#if UNITY_EDITOR
+                if (Application.isPlaying)
+#endif
+                DontDestroyOnLoad(daemon);
+                DinnerTime.update -= daemon.Update;
+                DinnerTime.update -= daemon.OnPostRender;
+                DinnerTime.fixedUpdate -= daemon.FixedUpdate;
+                DinnerTime.update += daemon.Update;
+                DinnerTime.update += daemon.OnPostRender;
+                DinnerTime.fixedUpdate += daemon.FixedUpdate;
+
+                DinnerTime.Awake();
+
                 return daemon;
             });
 
@@ -61,9 +84,6 @@ namespace CANStudio.DinnerCoroutine
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Register(Object keeper, ICoroutine coroutine, string functionName = null)
         {
-#if UNITY_EDITOR
-            Init();
-#endif
             if (!keeper || coroutine is null) return;
 
             var objectCoroutines = coroutine.IsParallel ? _objectForkCoroutines : _objectSpoonCoroutines;
@@ -90,9 +110,6 @@ namespace CANStudio.DinnerCoroutine
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Register(ICoroutine coroutine, string functionName = null)
         {
-#if UNITY_EDITOR
-            Init();
-#endif
             if (coroutine is null) return;
 
             var protectedCoroutines = coroutine.IsParallel ? _protectedForkCoroutines : _protectedSpoonCoroutines;
@@ -141,34 +158,6 @@ namespace CANStudio.DinnerCoroutine
                     c.Stop();
             }
         }
-
-        private void Init()
-        {
-#if UNITY_EDITOR
-            if (Application.isPlaying)
-#endif
-                DontDestroyOnLoad(this);
-
-#if UNITY_EDITOR
-            if (!(EditorApplication.update is null)) EditorApplication.update -= EditorUpdate;
-            EditorApplication.update += EditorUpdate;
-#endif
-        }
-
-        private void Awake()
-        {
-            Init();
-        }
-
-#if UNITY_EDITOR
-        private void EditorUpdate()
-        {
-            if (Application.isPlaying) return;
-            Update();
-            FixedUpdate();
-            OnPostRender();
-        }
-#endif
 
         private void Update()
         {
