@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/SUSTech-CANStudio/DinnerCoroutine/compare/v1.2.0...v1.2.1) (2021-04-29)
+
+
+### Performance Improvements
+
+* coroutines in update also use a queue ([56afdc1](https://github.com/SUSTech-CANStudio/DinnerCoroutine/commit/56afdc146be6214d0c04e2579b29d22c626b5730))
+
 # [1.2.0](https://github.com/SUSTech-CANStudio/DinnerCoroutine/compare/v1.1.0...v1.2.0) (2021-04-28)
 
 
