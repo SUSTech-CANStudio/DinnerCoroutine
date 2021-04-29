@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/SUSTech-CANStudio/DinnerCoroutine/compare/v1.2.1...v1.2.2) (2021-04-29)
+
+
+### Bug Fixes
+
+* build error ([3367ef3](https://github.com/SUSTech-CANStudio/DinnerCoroutine/commit/3367ef3058f485ad353cb047d991d374948f790b))
+
 ## [1.2.1](https://github.com/SUSTech-CANStudio/DinnerCoroutine/compare/v1.2.0...v1.2.1) (2021-04-29)
 
 
