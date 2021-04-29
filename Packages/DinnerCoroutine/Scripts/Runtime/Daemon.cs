@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -53,17 +54,23 @@ namespace CANStudio.DinnerCoroutine
                 else
                 {
                     go = new GameObject(DefaultName) {hideFlags = HideFlags.HideAndDontSave};
-#if UNITY_EDITOR
-                    if (Application.isPlaying)
-#endif
-                    DontDestroyOnLoad(go);
                     daemon = go.AddComponent<Daemon>();
                 }
 
 #if UNITY_EDITOR
                 if (Application.isPlaying)
-#endif
-                DontDestroyOnLoad(daemon);
+                {
+                    DontDestroyOnLoad(go);
+                    DontDestroyOnLoad(daemon);
+                }
+                else
+                    EditorApplication.playModeStateChanged += change =>
+                    {
+                        if (change != PlayModeStateChange.EnteredPlayMode) return;
+                        DontDestroyOnLoad(go);
+                        DontDestroyOnLoad(daemon);
+                    };
+
                 DinnerTime.update -= daemon.Update;
                 DinnerTime.update -= daemon.OnPostRender;
                 DinnerTime.fixedUpdate -= daemon.FixedUpdate;
@@ -72,7 +79,10 @@ namespace CANStudio.DinnerCoroutine
                 DinnerTime.fixedUpdate += daemon.FixedUpdate;
 
                 DinnerTime.Awake();
-
+#else
+                DontDestroyOnLoad(go);
+                DontDestroyOnLoad(daemon);
+#endif
                 return daemon;
             });
 
