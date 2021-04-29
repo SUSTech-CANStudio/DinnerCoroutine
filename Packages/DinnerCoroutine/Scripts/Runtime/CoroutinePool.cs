@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace CANStudio.DinnerCoroutine
@@ -15,8 +16,6 @@ namespace CANStudio.DinnerCoroutine
             _list = new LinkedList<ICoroutine>();
         }
 
-        public IEnumerable<ICoroutine> this[string name] => _dictionary[name];
-
         public IEnumerator<LinkedListNode<ICoroutine>> GetEnumerator()
         {
             return new Enumerator(this);
@@ -32,21 +31,29 @@ namespace CANStudio.DinnerCoroutine
         /// </summary>
         /// <param name="name">Function name.</param>
         /// <param name="coroutine"></param>
-        public void Add(string name, ICoroutine coroutine)
+        public LinkedListNode<ICoroutine> Add(string name, ICoroutine coroutine)
         {
-            if (coroutine is null) return;
-            if (_dictionary.TryGetValue(name, out var list)) list.AddLast(coroutine);
-            else _dictionary.Add(name, new LinkedList<ICoroutine>(new []{coroutine}));
+            if (coroutine is null)
+                throw new ArgumentNullException(nameof(coroutine));
+
+            if (!_dictionary.TryGetValue(name, out var list))
+            {
+                list = new LinkedList<ICoroutine>();
+                _dictionary.Add(name, list);
+            }
+
+            return list.AddLast(coroutine);
         }
 
         /// <summary>
         ///     Add a coroutine without name.
         /// </summary>
         /// <param name="coroutine"></param>
-        public void Add(ICoroutine coroutine)
+        public LinkedListNode<ICoroutine> Add(ICoroutine coroutine)
         {
-            if (coroutine is null) return;
-            _list.AddLast(coroutine);
+            if (coroutine is null)
+                throw new ArgumentNullException(nameof(coroutine));
+            return _list.AddLast(coroutine);
         }
 
         /// <summary>
